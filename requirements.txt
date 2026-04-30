@@ -1,0 +1,8 @@
+Django>=6.0.4
+djangorestframework
+djangorestframework-simplejwt
+django-celery-beat
+drf-spectacular
+psycopg2-binary
+django-cors-headers
+ruff
