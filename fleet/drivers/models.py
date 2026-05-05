@@ -38,6 +38,8 @@ class Conductor(models.Model):
         return self.estado == 'activo' and self.horas_hoy < self.limite_horas_dia
 
     def actualizar_horas(self, horas):
-        self.horas_hoy += horas
-        self.horas_totales += horas
+        from decimal import Decimal
+        horas_decimal = Decimal(str(horas))
+        self.horas_hoy += horas_decimal
+        self.horas_totales += horas_decimal
         self.save()

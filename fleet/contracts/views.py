@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 from .models import Contrato, Factura
 from .serializers import ContratoSerializer, FacturaSerializer
 from django.utils import timezone
+from decimal import Decimal
 import uuid
 
 class ContratoViewSet(viewsets.ModelViewSet):
@@ -27,17 +28,20 @@ class ContratoViewSet(viewsets.ModelViewSet):
         if contrato.estado != 'activa':
             return Response({'error': 'Solo se pueden cerrar rentas activas.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        km_final = request.data.get('km_final')
-        if not km_final:
+        km_final_raw = request.data.get('km_final')
+        if not km_final_raw:
             return Response({'error': 'Debe proveer km_final.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        contrato.km_final = float(km_final)
+        contrato.km_final = Decimal(str(km_final_raw))
         contrato.fecha_fin = timezone.now()
         
         # Calcular el costo usando el patrón Strategy
         costo_calculado = contrato.calcular_costo()
         contrato.costo_subtotal = costo_calculado
-        contrato.costo_total = costo_calculado + contrato.costo_penalizaciones
+        
+        # Aseguramos que el costo total sea Decimal
+        penalizaciones = Decimal(str(contrato.costo_penalizaciones))
+        contrato.costo_total = costo_calculado + penalizaciones
         
         # Al guardar el contrato como 'cerrada', se disparan los Observers (signals)
         contrato.estado = 'cerrada'
@@ -45,7 +49,7 @@ class ContratoViewSet(viewsets.ModelViewSet):
 
         return Response({
             'status': 'Contrato finalizado exitosamente.',
-            'costo_total': contrato.costo_total
+            'costo_total': float(contrato.costo_total)
         })
 
 class FacturaViewSet(viewsets.ReadOnlyModelViewSet):

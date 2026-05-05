@@ -53,6 +53,16 @@ class Contrato(models.Model):
     def __str__(self):
         return f"{self.numero_contrato} - {self.vehiculo.placa}"
 
+    def calcular_costo(self):
+        """
+        Implementación del Patrón Strategy para calcular el costo
+        basado en el tipo de tarifa (hora, día, km).
+        """
+        from .services import StrategyFactory
+        from decimal import Decimal
+        strategy = StrategyFactory.get_strategy(self.tipo_tarifa)
+        return strategy.calcular(self)
+
 class Factura(models.Model):
     contrato = models.OneToOneField(Contrato, on_delete=models.RESTRICT, related_name='factura')
     numero_factura = models.CharField(max_length=25, unique=True)

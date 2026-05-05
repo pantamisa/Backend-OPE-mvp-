@@ -10,11 +10,13 @@ from fleet.drivers.views import ConductorViewSet
 from fleet.contracts.views import ContratoViewSet, FacturaViewSet
 from fleet.maintenance.views import MantenimientoViewSet
 from fleet.reports.views import ReporteViewSet
+from fleet.reports.dashboard_views import DashboardViewSet
 from fleet.alerts.views import AlertaViewSet
 from fleet.telemetry.views import TelemetriaViewSet
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
+router.register(r'dashboard', DashboardViewSet, basename='dashboard')
 router.register(r'vehicles', VehiculoViewSet)
 router.register(r'drivers', ConductorViewSet)
 router.register(r'contracts', ContratoViewSet)
