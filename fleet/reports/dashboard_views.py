@@ -2,6 +2,7 @@ from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db.models import Sum, Avg
+from django.db.models.functions import ExtractMonth, ExtractYear
 from django.utils import timezone
 from fleet.telemetry.models import Telemetria
 from fleet.vehicles.models import Vehiculo
@@ -11,37 +12,50 @@ class DashboardViewSet(viewsets.ViewSet):
 
     def list(self, request):
         now = timezone.now()
-        current_month = now.month
         current_year = now.year
+        current_month = now.month
 
-        # 1. Consumo por coches (para el gráfico)
-        # Agrupamos por vehículo y sumamos el nivel_combustible (usado como métrica de KW)
-        consumo_por_coche = Vehiculo.objects.annotate(
-            total_kw=Sum('telemetrias__nivel_combustible')
-        ).values('placa', 'total_kw').order_by('placa')[:11]
+        # 1. Consumo por Meses (Eje X del gráfico)
+        labels = [
+            'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+            'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+        ]
+        
+        # Inicializamos los datos en 0.0 para cada mes
+        data_meses = [0.0] * 12
+        
+        # Consultamos la telemetría del año actual, extrayendo el mes
+        # Nota: Usamos ExtractMonth directamente sobre el queryset
+        registros = Telemetria.objects.filter(timestamp__year=current_year)
+        
+        consumo_por_mes = registros.annotate(
+            mes=ExtractMonth('timestamp')
+        ).values('mes').annotate(
+            total_consumo=Sum('nivel_combustible')
+        ).order_by('mes')
 
-        # 2. Consumo del mes
-        consumo_mes = Telemetria.objects.filter(
-            timestamp__month=current_month,
-            timestamp__year=current_year
-        ).aggregate(total=Sum('nivel_combustible'))['total'] or 0
+        for item in consumo_por_mes:
+            mes_index = item['mes'] - 1
+            if 0 <= mes_index < 12:
+                data_meses[mes_index] = float(item['total_consumo'] or 0)
 
-        # 3. Promedio consumo mes
-        promedio_mes = Telemetria.objects.filter(
-            timestamp__month=current_month,
-            timestamp__year=current_year
-        ).aggregate(avg=Avg('nivel_combustible'))['avg'] or 0
-
-        # 4. Promedio consumo en oficinas (Simulado o de un modelo específico si existiera)
-        promedio_oficinas = 20.0 
+        # 2. Métricas del mes actual
+        # Consumo total de este mes
+        stats_mes = Telemetria.objects.filter(
+            timestamp__year=current_year,
+            timestamp__month=current_month
+        ).aggregate(
+            total=Sum('nivel_combustible'),
+            promedio=Avg('nivel_combustible')
+        )
 
         return Response({
-            'labels': [item['placa'] for item in consumo_por_coche],
-            'data': [float(item['total_kw'] or 0) for item in consumo_por_coche],
+            'labels': labels,
+            'data': data_meses,
             'metrics': {
-                'consumoMes': float(consumo_mes),
-                'promedioMes': float(promedio_mes),
-                'promedioOficinas': promedio_oficinas
+                'consumoMes': float(stats_mes['total'] or 0),
+                'promedioMes': round(float(stats_mes['promedio'] or 0), 2),
+                'promedioOficinas': 20.0
             },
             'user': {
                 'username': request.user.username,

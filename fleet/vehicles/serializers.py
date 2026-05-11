@@ -7,8 +7,8 @@ class VehiculoSerializer(serializers.ModelSerializer):
     brand = serializers.CharField(source='marca')
     model = serializers.CharField(source='modelo')
     year = serializers.IntegerField(source='anio')
-    type = serializers.CharField(source='get_tipo_display')
-    status = serializers.CharField(source='get_estado_display')
+    type = serializers.ChoiceField(source='tipo', choices=Vehiculo.TIPO_CHOICES)
+    status = serializers.ChoiceField(source='estado', choices=Vehiculo.ESTADO_CHOICES, required=False)
     km_per_liter = serializers.SerializerMethodField()
     assigned_driver_name = serializers.SerializerMethodField()
 
